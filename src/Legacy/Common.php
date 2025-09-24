@@ -301,7 +301,7 @@ class Common
         $hmax = 0,
         $vOffSet = 0
     ) {
-        $aFont = array('font' => 'arial', 'size' => 7.2, 'style' => 'B');
+        $aFont = array('font' => 'Courier', 'size' => 7.5, 'style' => 'B');
         $oldY = $y;
         $temObs = false;
         $resetou = false;

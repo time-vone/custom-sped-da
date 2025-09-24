@@ -64,7 +64,7 @@ class Cupom extends Common
      * Retorna a sigla da UF
      * @var string
      */
-    
+
     /**
      * __contruct
      *
@@ -96,6 +96,7 @@ class Cupom extends Common
         $this->logomarca = $sPathLogo;
         if (empty($fonteDANFE)) {
             $this->fontePadrao = 'Times';
+
         } else {
             $this->fontePadrao = $fonteDANFE;
         }
@@ -114,27 +115,27 @@ class Cupom extends Common
             $this->ICMSTot    = 0;
             $this->tpImp      = 2;
             $this->infAdic    = '';
-            
+
             //se for o layout 4.0 busca pelas tags de detalhe do pagamento
             //senao, busca pelas tags de pagamento principal
-            
+
             $this->vTroco = $venda->troco;
-            
+
         }else {
             throw new InvalidArgumentException("Informe a venda");
         }
     }
-    
+
     public function getPapel()
     {
         return $this->papel;
     }
-    
+
     public function setPapel($aPap)
     {
         $this->papel = $aPap;
     }
-    
+
     public function monta(
         $orientacao = 'P',
         $papel = '',
@@ -144,7 +145,7 @@ class Cupom extends Common
     ) {
         $this->montaDANFE($orientacao, $papel, $logoAlign, $classPdf, $depecNumReg);
     }
-    
+
     public function montaDANFE(
         $orientacao = 'P',
         $papel = '',
@@ -167,7 +168,7 @@ class Cupom extends Common
         }
         // verifica se existe informações adicionais
         $this->textoAdic = '';
-        
+
         //se a orientação estiver em branco utilizar o padrão estabelecido na NF
         if ($orientacao == '') {
             $orientacao = 'P';
@@ -237,7 +238,7 @@ class Cupom extends Common
         }// para cliente (FIXO)};
         $hQRCode = 50;// para qrcode (FIXO)
         $hCabecItens = 4;//cabeçalho dos itens
-        
+
         $hUsado = $hCabecItens;
         $w2 = round($this->wPrint*0.31, 0);
         $totPag = 1;
@@ -257,725 +258,673 @@ class Cupom extends Common
         $qtdItens = count($this->venda->itens);
         $y = $this->pTotalDANFE($x, $y+5, $hTotal);
         // //COLOCA PAGAMENTOS
-        
+
         //adiciona as informações opcionais
         if (!empty($this->textoAdic)) {
             $y = $xInic + $hcabecalho + $hcabecalhoSecundario + $hprodutos
-            + $hTotal + $hpagamentos + $hmsgfiscal + $hcliente + $hQRCode;
+                + $hTotal + $hpagamentos + $hmsgfiscal + $hcliente + $hQRCode;
             $hInfAdic = 0;
             $y = $this->pInfAdic($x, $y, $hInfAdic);
         }
-        
+
         //retorna o ID na NFe
         if ($classPdf!==false) {
             $aR = [
-               'id'=>str_replace('NFe', '', $this->infNFe->getAttribute("Id")),
-               'classe_PDF'=>$this->pdf
-           ];
-           return $aR;
-       } else {
-        return str_replace('NFe', '', $this->venda->id);
-    }
-}
-
-protected function pCabecalhoDANFE($x = 0, $y = 0, $h = 0, $pag = '1', $totPag = '1')
-{
-
-    $emitRazao  = $this->config->razao_social;
-    $nomeFantasia  = $this->config->nome_fantasia;
-    $emitCnpj   = $this->config->cnpj;
-    $emitIE     = $this->config->ie;
-    $emitIM     = '';
-    $emitFone = ' ' . $this->config->fone;
-    
-    $emitLgr = $this->config->logradouro;
-    $emitNro = $this->config->numero;
-    $emitCpl = '';
-    $emitBairro = $this->config->bairro;
-    $emitCEP = $this->config->cep;
-    $emitMun = $this->config->municipio;
-    $emitUF = $this->config->UF;
-        // CONFIGURAÇÃO DE POSIÇÃO
-    $margemInterna = $this->margemInterna;
-    $maxW = $this->wPrint;
-    $h = $h-($margemInterna);
-        //COLOCA LOGOMARCA
-    if (is_file($this->logomarca)) {
-        $xImg = $margemInterna;
-        $yImg = $margemInterna + 1;
-        $this->pdf->Image($this->logomarca, $xImg, $yImg, 30, 22.5);
-        $xRs = ($maxW*0.4) + $margemInterna;
-        $wRs = ($maxW*0.6);
-        $alignEmit = 'L';
-    } else {
-        $xRs = $margemInterna;
-        $wRs = ($maxW*1);
-        $alignEmit = 'L';
-    }
-        //COLOCA RAZÃO SOCIAL
-    $texto = $emitRazao;
-
-    $texto = $texto . "\n" . $nomeFantasia;
-    $texto = $texto . "\nCNPJ:" . $emitCnpj;
-    $texto = $texto . "\nIE:" . $emitIE;
-    if (!empty($emitIM)) {
-        $texto = $texto . " - IM:" . $emitIM;
-    }
-    $texto = $texto . "\n" . $emitLgr . ", " . $emitNro . ", " . $emitBairro
-    . ". CEP: " . $emitCEP . ". " . $emitMun . "-" . $emitUF . $emitFone;
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'');
-    $this->pTextBox($xRs, $y, $wRs, $h, $texto, $aFont, 'C', $alignEmit, 0, '', false);
-}
-
-protected function pCabecalhoSecundarioDANFE($x = 0, $y = 0, $h = 0)
-{
-    $margemInterna = $this->margemInterna;
-    $maxW = $this->wPrint;
-    $w = ($maxW*1);
-    $hBox1 = 7;
-    $texto = "CUPOM NÃO FISCAL";
-    if($this->venda->prevenda_nivel){
-        $texto = "PRÉ VENDA";
-    }
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'B');
-    $this->pTextBox($x, $y, $w, $hBox1, $texto, $aFont, 'C', 'C', 0, '', false);
-    $hBox2 = 4;
-    $yBox2 = $y + $hBox1;
-    $texto = "\n";
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'');
-    $this->pTextBox($x, $yBox2, $w, $hBox2, $texto, $aFont, 'C', 'C', 0, '', false);
-}
-
-protected function pProdutosDANFE($x = 0, $y = 0, $h = 0)
-{
-    $margemInterna = $this->margemInterna;
-    $maxW = $this->wPrint;
-    $qtdItens = count($this->venda->itens);
-    $w = ($maxW*1);
-    $hLinha = $this->hLinha+2;
-    $aFontCabProdutos = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
-    $wBoxCod = $w*0;
-    $texto = "";
-    $this->pTextBox($x, $y, $wBoxCod, $hLinha+1, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
-    $wBoxDescricao = $w*0.65;
-    $xBoxDescricao = $wBoxCod + $x;
-    $texto = "DESCRICÃO";
-    $this->pTextBox(
-        $xBoxDescricao,
-        $y,
-        $wBoxDescricao,
-        $hLinha,
-        $texto,
-        $aFontCabProdutos,
-        'T',
-        'L',
-        0,
-        '',
-        false
-    );
-    $wBoxQt = $w*0.08;
-    $xBoxQt = $wBoxDescricao + $xBoxDescricao;
-    $texto = "QT";
-    $this->pTextBox($xBoxQt, $y, $wBoxQt, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
-    $wBoxUn = $w*0;
-    $xBoxUn = $wBoxQt + $xBoxQt;
-    $texto = "";
-    $this->pTextBox($xBoxUn, $y, $wBoxUn, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
-    $wBoxVl = $w*0.13;
-    $xBoxVl = $wBoxUn + $xBoxUn;
-    $texto = "VALOR";
-    $this->pTextBox($xBoxVl, $y, $wBoxVl, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
-    $wBoxTotal = $w*0.13;
-    $xBoxTotal = $wBoxVl + $xBoxVl;
-    $texto = "TOTAL";
-    $this->pTextBox($xBoxTotal, $y, $wBoxTotal, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
-    $hBoxLinha = $this->hBoxLinha;
-    $hMaxLinha = $this->hMaxLinha;
-    $cont = 0;
-    $aFontProdutos = array('font'=>$this->fontePadrao, 'size'=>7.5, 'style'=>'');
-    if ($qtdItens > 0) {
-
-        foreach ($this->venda->itens as $key => $p) {
-
-            $this->totalItens += $p->quantidade;
-            $thisItem   = '1';
-            $prod       = '@';
-            $nitem      = 1;
-            $cProd      = $p->produto->referencia;
-
-            if(isset($p->itemPedido) && $p->itemPedido != null){
-                $xProd = $p->itemPedido->nomeDoProduto();
-            } else if($this->venda->pedido_delivery_id > 0){
-                $xProd = $p->nomeDoProdutoDelivery($this->venda->pedido_delivery_id, $key);
-            }else{
-                $xProd = ($cProd != "" ? "$cProd - " : "").$p->produto->nome;
-                if($p->produto->grade){
-                    $xProd .= " " . $p->produto->str_grade; 
-                } 
-            }
-
-            $qCom       = number_format($p->quantidade, $this->config->casas_decimais_qtd);
-            $uCom       = $p->produto->unidade_venda == 'UNID' ? 'UN' : 
-            $p->produto->unidade_venda;
-
-            $vUnCom     = number_format($p->valor, $this->config->casas_decimais, ",", ".");
-            $vProd      = number_format($p->valor * $p->quantidade, $this->config->casas_decimais, ",", ".");
-
-            $comp = 0;
-            if(strlen($xProd) > 30 && strlen($xProd) < 40){
-                $comp = 1.2;
-            }else if(strlen($xProd) > 40 && strlen($xProd) < 50){
-                $comp = 2.2;
-            }else if(strlen($xProd) > 50){
-                $comp = 3.2;
-            }
-                //COLOCA PRODUTO
-            $yBoxProd = $y + $hLinha + ($cont*$hMaxLinha);
-                //COLOCA PRODUTO CÓDIGO
-            $wBoxCod = $w*0;
-            $texto = '';
-            $this->pTextBox($x, $yBoxProd, $wBoxCod, $hMaxLinha, $texto, $aFontProdutos, 'C', 'C', 0, '', false);
-                //COLOCA PRODUTO DESCRIÇÃO
-            $wBoxDescricao = $w*0.65;
-            $xBoxDescricao = $wBoxCod + $x;
-            $texto = $xProd;
-            $this->pTextBox(
-                $xBoxDescricao,
-                $yBoxProd,
-                $wBoxDescricao,
-                $hMaxLinha,
-                $texto,
-                $aFontProdutos,
-                'C',
-                'L',
-                0,
-                '',
-                false
-            );
-                //COLOCA PRODUTO QUANTIDADE
-            $wBoxQt = $w*0.08;
-            $xBoxQt = $wBoxDescricao + $xBoxDescricao;
-            $texto = $qCom;
-            $this->pTextBox(
-                $xBoxQt,
-                $yBoxProd,
-                $wBoxQt,
-                $hMaxLinha,
-                $texto,
-                $aFontProdutos,
-                'C',
-                'C',
-                0,
-                '',
-                false
-            );
-                //COLOCA PRODUTO UNIDADE
-            $wBoxUn = $w*0;
-            $xBoxUn = $wBoxQt + $xBoxQt;
-            $texto = '';
-            $this->pTextBox(
-                $xBoxUn,
-                $yBoxProd,
-                $wBoxUn,
-                $hMaxLinha,
-                $texto,
-                $aFontProdutos,
-                'C',
-                'C',
-                0,
-                '',
-                false
-            );
-                //COLOCA PRODUTO VL UNITÁRIO
-            $wBoxVl = $w*0.13;
-            $xBoxVl = $wBoxUn + $xBoxUn;
-            $texto = $vUnCom;
-            $this->pTextBox(
-                $xBoxVl,
-                $yBoxProd,
-                $wBoxVl,
-                $hMaxLinha,
-                $texto,
-                $aFontProdutos,
-                'C',
-                'R',
-                0,
-                '',
-                false
-            );
-                //COLOCA PRODUTO VL TOTAL
-            $wBoxTotal = $w*0.13;
-            $xBoxTotal = $wBoxVl + $xBoxVl;
-            $texto = $vProd;
-            $this->pTextBox(
-                $xBoxTotal,
-                $yBoxProd,
-                $wBoxTotal,
-                $hMaxLinha,
-                $texto,
-                $aFontProdutos,
-                'C',
-                'R',
-                0,
-                '',
-                false
-            );
-
-            $cont++;
+                'id'=>str_replace('NFe', '', $this->infNFe->getAttribute("Id")),
+                'classe_PDF'=>$this->pdf
+            ];
+            return $aR;
+        } else {
+            return str_replace('NFe', '', $this->venda->id);
         }
     }
-}
 
-protected function pTotalDANFE($x = 0, $y = 0, $h = 0)
-{
-    $margemInterna = $this->margemInterna;
-    $maxW = $this->wPrint;
-    $hLinha = 3;
-    $wColEsq = ($maxW*0.7);
-    $wColDir = ($maxW*0.3);
-    $xValor = $x + $wColEsq;
-    $qtdItens = count($this->venda->itens);
-    $vProd = $this->getTagValue($this->ICMSTot, "vProd");
-    $vNF = $this->getTagValue($this->ICMSTot, "vNF");
-    $vDesc  = $this->getTagValue($this->ICMSTot, "vDesc");
-    $vFrete = $this->getTagValue($this->ICMSTot, "vFrete");
-    $vTotTrib = $this->getTagValue($this->ICMSTot, "vTotTrib");
-    $texto = "Qtd. Total de Itens";
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($x, $y, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    $texto = $qtdItens;
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($xValor, $y, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
-    $yTotal = $y + ($hLinha);
-    $texto = "Total de Produtos";
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($x, $yTotal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    $texto = "" . $this->totalItens;
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($xValor, $yTotal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+    protected function pCabecalhoDANFE($x = 0, $y = 0, $h = 0, $pag = '1', $totPag = '1')
+    {
+        $emitRazao  = $this->config->razao_social;
+        $nomeFantasia  = $this->config->nome_fantasia;
+        $emitCnpj   = $this->config->cnpj;
+        $emitIE     = $this->config->ie;
+        $emitIM     = '';
+        $emitFone = ' ' . $this->config->fone;
 
-    $yDesconto = $y + ($hLinha*2);
-    $texto = "Total";
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($x, $yDesconto, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    $texto = "R$ " . number_format($this->venda->valor_total, $this->config->casas_decimais, ',', '.');
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($xValor, $yDesconto, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
-    $contLinha = 2;
+        $emitLgr = $this->config->logradouro;
+        $emitNro = $this->config->numero;
+        $emitCpl = '';
+        $emitBairro = $this->config->bairro;
+        $emitCEP = $this->config->cep;
+        $emitMun = $this->config->municipio;
+        $emitUF = $this->config->UF;
 
-    if($this->venda->tipo_pagamento == '01'){
-        $contLinha++;
+        // --- CONFIGURAÇÃO DE POSIÇÃO E ALINHAMENTO ---
+        $margemInterna = $this->margemInterna;
+        $maxW = $this->wPrint;
+        $h = $h - $margemInterna;
 
-        $yFrete= $y + ($hLinha*$contLinha);
-        $texto = "Dinheiro Recebido";
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yFrete, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-        $texto = "R$ " . $this->venda->dinheiro_recebido;
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($xValor, $yFrete, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        // Lógica de alinhamento e posicionamento
+        if (is_file($this->logomarca)) {
+            // --- SE TIVER LOGOMARCA ---
+            $logoWidth = 30;
+            $logoHeight = 22.5;
+            $gap = 2; // <<< NOVO: Espaço de 2mm entre a logo e o texto
+
+            // 1. Desenha a Imagem
+            $xImg = $x + $margemInterna;
+            $yImg = $y + (($h + $margemInterna - $logoHeight) / 2); // Centraliza a imagem verticalmente no espaço do cabeçalho
+            $this->pdf->Image($this->logomarca, $xImg, $yImg, $logoWidth, $logoHeight);
+
+            // 2. Define os parâmetros para o Bloco de Texto
+            $xRs = $xImg + $logoWidth + $gap;
+            $wRs = $maxW - $logoWidth - $gap - ($margemInterna * 2);
+            $hAlign = 'L'; // Alinhamento horizontal: Esquerda
+            $vAlign = 'C'; // <<< CORRIGIDO: Alinhamento vertical: Centro
+
+        } else {
+            // --- SE NÃO TIVER LOGOMARCA ---
+            $xRs = $x + $margemInterna;
+            $wRs = $maxW - ($margemInterna * 2);
+            $hAlign = 'C'; // Alinhamento horizontal: Centro
+            $vAlign = 'T'; // Alinhamento vertical: Topo
+        }
+
+        // --- MONTAGEM E IMPRESSÃO DO TEXTO ---
+        $texto = $emitRazao;
+        $texto .= "\n" . $nomeFantasia;
+        $texto .= "\nCNPJ:" . $this->formatField($emitCnpj, "##.###.###/####-##");
+        $texto .= "\nIE:" . $emitIE;
+        if (!empty($emitIM)) {
+            $texto .= " - IM:" . $emitIM;
+        }
+        $texto .= "\n" . $emitLgr . ", " . $emitNro . ", " . $emitBairro;
+        $texto .= "\nCEP: " . $emitCEP . ". " . $emitMun . "-" . $emitUF . $emitFone;
+
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'');
+
+        // A chamada final agora usa as variáveis de alinhamento dinâmicas
+        $this->pTextBox($xRs, $y, $wRs, $h, $texto, $aFont, $vAlign, $hAlign, 0, '', false);
     }
 
-    if($this->venda->troco > 0){
-        $contLinha++;
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Troco";
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-        $texto = "R$ " . number_format($this->venda->troco, 2, ',', '.');
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+    protected function pCabecalhoSecundarioDANFE($x = 0, $y = 0, $h = 0)
+    {
+        $margemInterna = $this->margemInterna;
+        $maxW = $this->wPrint;
+        $w = ($maxW*1);
+        $hBox1 = 7;
+        $texto = "CUPOM NÃO FISCAL";
+        if($this->venda->prevenda_nivel){
+            $texto = "PRÉ VENDA";
+        }
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'B');
+        $this->pTextBox($x, $y, $w, $hBox1, $texto, $aFont, 'C', 'C', 0, '', false);
+        $hBox2 = 4;
+        $yBox2 = $y + $hBox1;
+        $texto = "\n";
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'');
+        $this->pTextBox($x, $yBox2, $w, $hBox2, $texto, $aFont, 'C', 'C', 0, '', false);
     }
 
+    protected function pProdutosDANFE($x = 0, $y = 0, $h = 0)
+    {
+        $margemInterna = $this->margemInterna;
+        $maxW = $this->wPrint;
+        $qtdItens = count($this->venda->itens);
+        $w = ($maxW*1);
+        $hLinha = $this->hLinha+2;
+        $aFontCabProdutos = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
 
-    if($this->venda->pedido_delivery_id > 0){
-        $taxaEntraga = $this->venda->pedidoDelivery->calculaFrete();
-    }else{
-        $taxaEntraga = 0;
-    }
+        // Definição das larguras das colunas
+        $wBoxCod = $w*0; // Coluna de código está desativada
+        $wBoxDescricao = $w*0.55; // Diminuí um pouco para dar espaço
+        $wBoxQt = $w*0.12;
+        $wBoxUn = $w*0; // Coluna de unidade está desativada
+        $wBoxVl = $w*0.18;
+        $wBoxTotal = $w*0.15;
 
-    
-    if($this->venda->desconto > 0){
-        $contLinha++;
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Desconto";
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-        $texto = "R$ " . number_format($this->venda->desconto, 2, ',', '.');
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
-    }
+        // --- CABEÇALHO DOS ITENS ---
+        $xBoxCod = $x;
+        $texto = "";
+        $this->pTextBox($xBoxCod, $y, $wBoxCod, $hLinha+1, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
 
-    if($this->venda->acrescimo > 0){
-        $contLinha++;
+        $xBoxDescricao = $xBoxCod + $wBoxCod;
+        $texto = "DESCRICÃO";
+        $this->pTextBox($xBoxDescricao, $y, $wBoxDescricao, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
 
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Acrescimo";
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-        $texto = "R$ " . number_format($this->venda->acrescimo, 2, ',', '.');
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
-    }
+        $xBoxQt = $xBoxDescricao + $wBoxDescricao; // CORRIGIDO
+        $texto = "QT";
+        $this->pTextBox($xBoxQt, $y, $wBoxQt, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
 
-    if($taxaEntraga > 0){
-        $contLinha++;
+        $xBoxUn = $xBoxQt + $wBoxQt; // CORRIGIDO
+        $texto = "";
+        $this->pTextBox($xBoxUn, $y, $wBoxUn, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
 
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Taxa de entrega";
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-        $texto = "R$ " . number_format($taxaEntraga, 2, ',', '.');
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
-    }
+        $xBoxVl = $xBoxUn + $wBoxUn; // CORRIGIDO
+        $texto = "VALOR";
+        $this->pTextBox($xBoxVl, $y, $wBoxVl, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
 
-    $contLinha++;
-    $yTotalFinal = $y + ($hLinha*$contLinha);
-    $texto = "Data";
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        $xBoxTotal = $xBoxVl + $wBoxVl; // CORRIGIDO
+        $texto = "TOTAL";
+        $this->pTextBox($xBoxTotal, $y, $wBoxTotal, $hLinha, $texto, $aFontCabProdutos, 'T', 'L', 0, '', false);
 
-    $red = 0;
-    $texto = Carbon::parse($this->venda->created_at)->format('d/m/Y H:i:s');
+        // --- ITENS DA VENDA ---
+        $hBoxLinha = $this->hBoxLinha;
+        $hMaxLinha = $this->hMaxLinha;
+        $cont = 0;
+        $aFontProdutos = array('font'=>$this->fontePadrao, 'size'=>7.5, 'style'=>'');
+        if ($qtdItens > 0) {
 
-    if($this->larg < 74){
-        $red = 5;
-    }
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($xValor-$red-10, $yTotalFinal, $wColDir+$red+10, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+            foreach ($this->venda->itens as $key => $p) {
 
-    $contLinha++;
-    $yTotalFinal = $y + ($hLinha*$contLinha);
-    $texto = "Código da Venda";
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    $texto = $this->venda->id;
-    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+                $this->totalItens += $p->quantidade;
+                $thisItem   = '1';
+                $prod       = '@';
+                $nitem      = 1;
+                $cProd      = $p->produto->referencia;
 
-    if($this->venda->observacao != ''){
-        $contLinha++;
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Observação";
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-        $texto = $this->venda->observacao;
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
-    }
-    if(isset($this->venda->fatura)){
-        if(sizeof($this->venda->fatura) > 0){
-            foreach($this->venda->fatura as $f){
-                $contLinha++;
-                $yTotalFinal = $y + ($hLinha*$contLinha);
-                $texto = \App\Models\VendaCaixa::getTipoPagamento($f->forma_pagamento);
-                $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-                $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-                $texto = number_format($f->valor, 2, ',', '.');
-                $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-                $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+                if(isset($p->itemPedido) && $p->itemPedido != null){
+                    $xProd = $p->itemPedido->nomeDoProduto();
+                } else if($this->venda->pedido_delivery_id > 0){
+                    $xProd = $p->nomeDoProdutoDelivery($this->venda->pedido_delivery_id, $key);
+                }else{
+                    $xProd = ($cProd != "" ? "$cProd - " : "").$p->produto->nome;
+                    if($p->produto->grade){
+                        $xProd .= " " . $p->produto->str_grade;
+                    }
+                }
+
+                $qCom       = number_format($p->quantidade, $this->config->casas_decimais_qtd);
+                $uCom       = $p->produto->unidade_venda == 'UNID' ? 'UN' :
+                    $p->produto->unidade_venda;
+
+                $vUnCom     = number_format($p->valor, $this->config->casas_decimais, ",", ".");
+                $vProd      = number_format($p->valor * $p->quantidade, $this->config->casas_decimais, ",", ".");
+
+                $yBoxProd = $y + $hLinha + ($cont*$hMaxLinha);
+
+                //COLOCA PRODUTO CÓDIGO
+                $xBoxCod = $x;
+                $texto = '';
+                $this->pTextBox($xBoxCod, $yBoxProd, $wBoxCod, $hMaxLinha, $texto, $aFontProdutos, 'C', 'C', 0, '', false);
+
+                //COLOCA PRODUTO DESCRIÇÃO
+                $xBoxDescricao = $xBoxCod + $wBoxCod;
+                $texto = $xProd;
+                $this->pTextBox($xBoxDescricao, $yBoxProd, $wBoxDescricao, $hMaxLinha, $texto, $aFontProdutos, 'C', 'L', 0, '', false);
+
+                //COLOCA PRODUTO QUANTIDADE
+                $xBoxQt = $xBoxDescricao + $wBoxDescricao; // CORRIGIDO
+                $texto = $qCom;
+                $this->pTextBox($xBoxQt, $yBoxProd, $wBoxQt, $hMaxLinha, $texto, $aFontProdutos, 'C', 'C', 0, '', false);
+
+                //COLOCA PRODUTO UNIDADE
+                $xBoxUn = $xBoxQt + $wBoxQt; // CORRIGIDO
+                $texto = '';
+                $this->pTextBox($xBoxUn, $yBoxProd, $wBoxUn, $hMaxLinha, $texto, $aFontProdutos, 'C', 'C', 0, '', false);
+
+                //COLOCA PRODUTO VL UNITÁRIO
+                $xBoxVl = $xBoxUn + $wBoxUn; // CORRIGIDO
+                $texto = $vUnCom;
+                $this->pTextBox($xBoxVl, $yBoxProd, $wBoxVl, $hMaxLinha, $texto, $aFontProdutos, 'C', 'R', 0, '', false);
+
+                //COLOCA PRODUTO VL TOTAL
+                $xBoxTotal = $xBoxVl + $wBoxVl; // CORRIGIDO
+                $texto = $vProd;
+                $this->pTextBox($xBoxTotal, $yBoxProd, $wBoxTotal, $hMaxLinha, $texto, $aFontProdutos, 'C', 'R', 0, '', false);
+
+                $cont++;
             }
-        }else{
-            // echo $this->venda->tipo_pagamento;
-            // die;
+        }
+    }
 
+    protected function pTotalDANFE($x = 0, $y = 0, $h = 0)
+    {
+        $margemInterna = $this->margemInterna;
+        $maxW = $this->wPrint;
+        $hLinha = 3;
+        $wColEsq = ($maxW*0.7);
+        $wColDir = ($maxW*0.3);
+        $xValor = $x + $wColEsq;
+        $qtdItens = count($this->venda->itens);
+        $vProd = $this->getTagValue($this->ICMSTot, "vProd");
+        $vNF = $this->getTagValue($this->ICMSTot, "vNF");
+        $vDesc  = $this->getTagValue($this->ICMSTot, "vDesc");
+        $vFrete = $this->getTagValue($this->ICMSTot, "vFrete");
+        $vTotTrib = $this->getTagValue($this->ICMSTot, "vTotTrib");
+        $texto = "Qtd. Total de Itens";
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $this->pTextBox($x, $y, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        $texto = $qtdItens;
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $this->pTextBox($xValor, $y, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        $yTotal = $y + ($hLinha);
+        $texto = "Total de Produtos";
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $this->pTextBox($x, $yTotal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        $texto = "" . $this->totalItens;
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $this->pTextBox($xValor, $yTotal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+
+        $yDesconto = $y + ($hLinha*2);
+        $texto = "Total";
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $this->pTextBox($x, $yDesconto, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        $texto = "R$ " . number_format($this->venda->valor_total, $this->config->casas_decimais, ',', '.');
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $this->pTextBox($xValor, $yDesconto, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        $contLinha = 2;
+
+        if($this->venda->tipo_pagamento == '01'){
+            $contLinha++;
+
+            $yFrete= $y + ($hLinha*$contLinha);
+            $texto = "Dinheiro Recebido";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yFrete, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+            $texto = "R$ " . $this->venda->dinheiro_recebido;
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($xValor, $yFrete, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        }
+
+        if($this->venda->troco > 0){
             $contLinha++;
             $yTotalFinal = $y + ($hLinha*$contLinha);
-            $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento);
+            $texto = "Troco";
             $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
             $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-            $texto = number_format($this->venda->valor_total, 2, ',', '.');
+            $texto = "R$ " . number_format($this->venda->troco, 2, ',', '.');
             $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
             $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
         }
-    }
 
-    // if($this->venda->tipo_pagamento == '99'){
-    //     if($this->venda->valor_pagamento_1 > 0){
-    //         $contLinha++;
 
-    //         $yTotalFinal = $y + ($hLinha*$contLinha);
-    //         $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento_1);
-    //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    //         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    //         $texto = $this->venda->valor_pagamento_1;
-    //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    //         $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        if($this->venda->pedido_delivery_id > 0){
+            $taxaEntraga = $this->venda->pedidoDelivery->calculaFrete();
+        }else{
+            $taxaEntraga = 0;
+        }
 
-    //     }
 
-    //     if($this->venda->valor_pagamento_2 > 0){
-    //         $contLinha++;
+        if($this->venda->desconto > 0){
+            $contLinha++;
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Desconto";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+            $texto = "R$ " . number_format($this->venda->desconto, 2, ',', '.');
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        }
 
-    //         $yTotalFinal = $y + ($hLinha*$contLinha);
-    //         $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento_2);
-    //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    //         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    //         $texto = $this->venda->valor_pagamento_2;
-    //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    //         $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        if($this->venda->acrescimo > 0){
+            $contLinha++;
 
-    //     }
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Acrescimo";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+            $texto = "R$ " . number_format($this->venda->acrescimo, 2, ',', '.');
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        }
 
-    //     if($this->venda->valor_pagamento_3 > 0){
-    //         $contLinha++;
+        if($taxaEntraga > 0){
+            $contLinha++;
 
-    //         $yTotalFinal = $y + ($hLinha*$contLinha);
-    //         $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento_3);
-    //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    //         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    //         $texto = $this->venda->valor_pagamento_3;
-    //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    //         $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Taxa de entrega";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+            $texto = "R$ " . number_format($taxaEntraga, 2, ',', '.');
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        }
 
-    //     }
-
-    // }
-
-    if($this->venda->cliente_id != null){
         $contLinha++;
-
         $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Cliente: " . $this->venda->cliente->razao_social;
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-        // $texto = $this->venda->cliente->razao_social;
-        // $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        // $this->pTextBox(3, $yTotalFinal, 60, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
-
-        $contLinha++;
-
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Telefone: " . $this->venda->cliente->telefone . " - " . $this->venda->cliente->celular;
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-
-
-        $contLinha++;
-
-
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Endereço: " . $this->venda->cliente->rua . ", " . $this->venda->cliente->numero . " - " .
-        $this->venda->cliente->bairro . " - " . $this->venda->cliente->complemento . " - " . $this->venda->cliente->cidade->nome . " (" . 
-        $this->venda->cliente->cidade->uf . ")";
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-    }
-
-    if($this->venda->cliente_id != null){
-        $contLinha++;
-        $contLinha++;
-        $contLinha++;
-
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "___________________________________________";
+        $texto = "Data";
         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
 
+        $red = 0;
+        $texto = Carbon::parse($this->venda->created_at)->format('d/m/Y H:i:s');
+
+        if($this->larg < 74){
+            $red = 5;
+        }
+        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $this->pTextBox($xValor-$red-10, $yTotalFinal, $wColDir+$red+10, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+
         $contLinha++;
         $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Assinatura";
+        $texto = "Código da Venda";
         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-
-    }
-
-    if($this->venda->comissaoAssessor){
-        $contLinha++;
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Assessor " . $this->venda->comissaoAssessor->assessor->razao_social;
+        $texto = $this->venda->id;
         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
 
-    }
+        if($this->venda->observacao != ''){
+            $contLinha++;
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Observação";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+            $texto = $this->venda->observacao;
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+        }
+        if(isset($this->venda->fatura)){
+            if(sizeof($this->venda->fatura) > 0){
+                foreach($this->venda->fatura as $f){
+                    $contLinha++;
+                    $yTotalFinal = $y + ($hLinha*$contLinha);
+                    $texto = \App\Models\VendaCaixa::getTipoPagamento($f->forma_pagamento);
+                    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+                    $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+                    $texto = number_format($f->valor, 2, ',', '.');
+                    $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+                    $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+                }
+            }else{
+                // echo $this->venda->tipo_pagamento;
+                // die;
 
-    if($this->venda->vendedor()){
-        $contLinha++;
-        $yTotalFinal = $y + ($hLinha*$contLinha);
-        $texto = "Vendedor " . $this->venda->vendedor();
-        $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-        $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
-
-    }
-
-    // if($this->venda->tipo_pagamento == 17 && $this->venda->qr_code_base64 != ""){
-
-    //     $pic = 'data:image/jpeg;base64,' . $this->venda->qr_code_base64;
-
-    //     $xp = 67 + ($qtdItens*7);
-    //     if($qtdItens > 4){
-    //         $xp = 80 + ($qtdItens*7);
-    //     }
-    //     $di = ($this->larg-50)/2;
-
-    //     $this->pTextBox($di+10, $xp+1, 50, 10, "Utilize o QrCode para pagar", $aFont, 'T', 'L', 0, '', false);
-
-    //     $this->pdf->image($pic, $di, $xp+4, 50, 40, 'PNG');
-    // }
-
-
-}
-
-protected function pPagamentosDANFE($x = 0, $y = 0, $h = 0)
-{
-    $y += 6;
-    $margemInterna = $this->margemInterna;
-    $maxW = $this->wPrint;
-    $qtdPgto = $this->pag->length;
-    $w = ($maxW*1);
-    $hLinha = $this->hLinha;
-    $wColEsq = ($maxW*0.7);
-    $wColDir = ($maxW*0.3);
-    $xValor = $x + $wColEsq;
-    $aFontPgto = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
-    $wBoxEsq = $w*0.7;
-    $texto = "FORMA DE PAGAMENTO";
-    $this->pTextBox($x, $y, $wBoxEsq, $hLinha, $texto, $aFontPgto, 'T', 'L', 0, '', false);
-    $wBoxDir = $w*0.3;
-    $xBoxDescricao = $x + $wBoxEsq;
-    $texto = "VALOR PAGO";
-    $this->pTextBox($xBoxDescricao, $y, $wBoxDir, $hLinha, $texto, $aFontPgto, 'T', 'R', 0, '', false);
-    $cont = 0;
-    if ($qtdPgto > 0) {
-        foreach ($this->pag as $pagI) {
-            $tPag = $this->getTagValue($pagI, "tPag");
-            $tPagNome = $this->tipoPag($tPag);
-            $tPnome = $tPagNome;
-            $vPag = number_format($this->getTagValue($pagI, "vPag"), 2, ",", ".");
-            $card = $pagI->getElementsByTagName("card")->item(0);
-            $cardCNPJ = '';
-            $tBand = '';
-            $tBandNome = '';
-            if (isset($card)) {
-                $cardCNPJ = $this->getTagValue($card, "CNPJ");
-                $tBand    = $this->getTagValue($card, "tBand");
-                $cAut = $this->getTagValue($card, "cAut");
-                $tBandNome = self::getCardName($tBand);
+                $contLinha++;
+                $yTotalFinal = $y + ($hLinha*$contLinha);
+                $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento);
+                $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+                $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+                $texto = number_format($this->venda->valor_total, 2, ',', '.');
+                $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+                $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
             }
+        }
+
+        // if($this->venda->tipo_pagamento == '99'){
+        //     if($this->venda->valor_pagamento_1 > 0){
+        //         $contLinha++;
+
+        //         $yTotalFinal = $y + ($hLinha*$contLinha);
+        //         $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento_1);
+        //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        //         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        //         $texto = $this->venda->valor_pagamento_1;
+        //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        //         $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+
+        //     }
+
+        //     if($this->venda->valor_pagamento_2 > 0){
+        //         $contLinha++;
+
+        //         $yTotalFinal = $y + ($hLinha*$contLinha);
+        //         $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento_2);
+        //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        //         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        //         $texto = $this->venda->valor_pagamento_2;
+        //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        //         $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+
+        //     }
+
+        //     if($this->venda->valor_pagamento_3 > 0){
+        //         $contLinha++;
+
+        //         $yTotalFinal = $y + ($hLinha*$contLinha);
+        //         $texto = \App\Models\VendaCaixa::getTipoPagamento($this->venda->tipo_pagamento_3);
+        //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        //         $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        //         $texto = $this->venda->valor_pagamento_3;
+        //         $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        //         $this->pTextBox($xValor, $yTotalFinal, $wColDir, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+
+        //     }
+
+        // }
+
+        if($this->venda->cliente_id != null){
+            $contLinha++;
+
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Cliente: " . $this->venda->cliente->razao_social;
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+            // $texto = $this->venda->cliente->razao_social;
+            // $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            // $this->pTextBox(3, $yTotalFinal, 60, $hLinha, $texto, $aFont, 'T', 'R', 0, '', false);
+
+            $contLinha++;
+
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Telefone: " . $this->venda->cliente->telefone . " - " . $this->venda->cliente->celular;
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+
+
+            $contLinha++;
+
+
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Endereço: " . $this->venda->cliente->rua . ", " . $this->venda->cliente->numero . " - " .
+                $this->venda->cliente->bairro . " - " . $this->venda->cliente->complemento . " - " . $this->venda->cliente->cidade->nome . " (" .
+                $this->venda->cliente->cidade->uf . ")";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>6, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+        }
+
+        if($this->venda->cliente_id != null){
+            $contLinha++;
+            $contLinha++;
+            $contLinha++;
+
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "___________________________________________";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+
+            $contLinha++;
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Assinatura";
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+
+        }
+
+        if($this->venda->comissaoAssessor){
+            $contLinha++;
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Assessor " . $this->venda->comissaoAssessor->assessor->razao_social;
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+
+        }
+
+        if($this->venda->vendedor()){
+            $contLinha++;
+            $yTotalFinal = $y + ($hLinha*$contLinha);
+            $texto = "Vendedor " . $this->venda->vendedor();
+            $aFont = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+            $this->pTextBox($x, $yTotalFinal, $wColEsq+23, $hLinha, $texto, $aFont, 'T', 'L', 0, '', false);
+
+        }
+
+        // if($this->venda->tipo_pagamento == 17 && $this->venda->qr_code_base64 != ""){
+
+        //     $pic = 'data:image/jpeg;base64,' . $this->venda->qr_code_base64;
+
+        //     $xp = 67 + ($qtdItens*7);
+        //     if($qtdItens > 4){
+        //         $xp = 80 + ($qtdItens*7);
+        //     }
+        //     $di = ($this->larg-50)/2;
+
+        //     $this->pTextBox($di+10, $xp+1, 50, 10, "Utilize o QrCode para pagar", $aFont, 'T', 'L', 0, '', false);
+
+        //     $this->pdf->image($pic, $di, $xp+4, 50, 40, 'PNG');
+        // }
+
+
+    }
+
+    protected function pPagamentosDANFE($x = 0, $y = 0, $h = 0)
+    {
+        $y += 6;
+        $margemInterna = $this->margemInterna;
+        $maxW = $this->wPrint;
+        $qtdPgto = $this->pag->length;
+        $w = ($maxW*1);
+        $hLinha = $this->hLinha;
+        $wColEsq = ($maxW*0.7);
+        $wColDir = ($maxW*0.3);
+        $xValor = $x + $wColEsq;
+        $aFontPgto = array('font'=>$this->fontePadrao, 'size'=>7, 'style'=>'B');
+        $wBoxEsq = $w*0.7;
+        $texto = "FORMA DE PAGAMENTO";
+        $this->pTextBox($x, $y, $wBoxEsq, $hLinha, $texto, $aFontPgto, 'T', 'L', 0, '', false);
+        $wBoxDir = $w*0.3;
+        $xBoxDescricao = $x + $wBoxEsq;
+        $texto = "VALOR PAGO";
+        $this->pTextBox($xBoxDescricao, $y, $wBoxDir, $hLinha, $texto, $aFontPgto, 'T', 'R', 0, '', false);
+        $cont = 0;
+        if ($qtdPgto > 0) {
+            foreach ($this->pag as $pagI) {
+                $tPag = $this->getTagValue($pagI, "tPag");
+                $tPagNome = $this->tipoPag($tPag);
+                $tPnome = $tPagNome;
+                $vPag = number_format($this->getTagValue($pagI, "vPag"), 2, ",", ".");
+                $card = $pagI->getElementsByTagName("card")->item(0);
+                $cardCNPJ = '';
+                $tBand = '';
+                $tBandNome = '';
+                if (isset($card)) {
+                    $cardCNPJ = $this->getTagValue($card, "CNPJ");
+                    $tBand    = $this->getTagValue($card, "tBand");
+                    $cAut = $this->getTagValue($card, "cAut");
+                    $tBandNome = self::getCardName($tBand);
+                }
                 //COLOCA PRODUTO
-            $yBoxProd = $y + $hLinha + ($cont*$hLinha);
+                $yBoxProd = $y + $hLinha + ($cont*$hLinha);
                 //COLOCA PRODUTO CÓDIGO
-            $texto = $tPagNome;
-            $this->pTextBox($x, $yBoxProd, $wBoxEsq, $hLinha, $texto, $aFontPgto, 'T', 'L', 0, '', false);
+                $texto = $tPagNome;
+                $this->pTextBox($x, $yBoxProd, $wBoxEsq, $hLinha, $texto, $aFontPgto, 'T', 'L', 0, '', false);
                 //COLOCA PRODUTO DESCRIÇÃO
-            $xBoxDescricao = $wBoxEsq + $x;
-            $texto = "R$ " . $vPag;
-            $this->pTextBox(
-                $xBoxDescricao,
-                $yBoxProd,
-                $wBoxDir,
-                $hLinha,
-                $texto,
-                $aFontPgto,
-                'C',
-                'R',
-                0,
-                '',
-                false
-            );
-            $cont++;
-        }
+                $xBoxDescricao = $wBoxEsq + $x;
+                $texto = "R$ " . $vPag;
+                $this->pTextBox(
+                    $xBoxDescricao,
+                    $yBoxProd,
+                    $wBoxDir,
+                    $hLinha,
+                    $texto,
+                    $aFontPgto,
+                    'C',
+                    'R',
+                    0,
+                    '',
+                    false
+                );
+                $cont++;
+            }
 
-        if (!empty($this->vTroco)) {
-            $yBoxProd = $y + $hLinha + ($cont*$hLinha);
+            if (!empty($this->vTroco)) {
+                $yBoxProd = $y + $hLinha + ($cont*$hLinha);
                 //COLOCA PRODUTO CÓDIGO
-            $texto = 'Troco';
-            $this->pTextBox($x, $yBoxProd, $wBoxEsq, $hLinha, $texto, $aFontPgto, 'T', 'L', 0, '', false);
+                $texto = 'Troco';
+                $this->pTextBox($x, $yBoxProd, $wBoxEsq, $hLinha, $texto, $aFontPgto, 'T', 'L', 0, '', false);
                 //COLOCA PRODUTO DESCRIÇÃO
-            $xBoxDescricao = $wBoxEsq + $x;
-            $texto = "R$ " . number_format($this->vTroco, 2, ",", ".");
-            $this->pTextBox(
-                $xBoxDescricao,
-                $yBoxProd,
-                $wBoxDir,
-                $hLinha,
-                $texto,
-                $aFontPgto,
-                'C',
-                'R',
-                0,
-                '',
-                false
-            );
+                $xBoxDescricao = $wBoxEsq + $x;
+                $texto = "R$ " . number_format($this->vTroco, 2, ",", ".");
+                $this->pTextBox(
+                    $xBoxDescricao,
+                    $yBoxProd,
+                    $wBoxDir,
+                    $hLinha,
+                    $texto,
+                    $aFontPgto,
+                    'C',
+                    'R',
+                    0,
+                    '',
+                    false
+                );
+            }
         }
     }
-}
 
-protected function pFiscalDANFE($x = 0, $y = 0, $h = 0)
-{
-    $y += 6;
-    $margemInterna = $this->margemInterna;
-    $maxW = $this->wPrint;
-    $w = ($maxW*1);
-    $hLinha = $this->hLinha;
-    $aFontTit = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'B');
-    $aFontTex = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'');
-    $digVal = $this->getTagValue($this->nfe, "DigestValue");
-    $chNFe = str_replace('NFe', '', $this->infNFe->getAttribute("Id"));
-    $tpAmb = $this->getTagValue($this->ide, 'tpAmb');
+    protected function pFiscalDANFE($x = 0, $y = 0, $h = 0)
+    {
+        $y += 6;
+        $margemInterna = $this->margemInterna;
+        $maxW = $this->wPrint;
+        $w = ($maxW*1);
+        $hLinha = $this->hLinha;
+        $aFontTit = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'B');
+        $aFontTex = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'');
+        $digVal = $this->getTagValue($this->nfe, "DigestValue");
+        $chNFe = str_replace('NFe', '', $this->infNFe->getAttribute("Id"));
+        $tpAmb = $this->getTagValue($this->ide, 'tpAmb');
 
-    if ($this->pNotaCancelada()) {
+        if ($this->pNotaCancelada()) {
             //101 Cancelamento
-        $this->pdf->SetTextColor(255, 0, 0);
-        $texto = "NFCe CANCELADA";
-        $this->pTextBox($x, $y - 25, $w, $h, $texto, $aFontTit, 'C', 'C', 0, '');
-        $this->pdf->SetTextColor(0, 0, 0);
-    }
+            $this->pdf->SetTextColor(255, 0, 0);
+            $texto = "NFCe CANCELADA";
+            $this->pTextBox($x, $y - 25, $w, $h, $texto, $aFontTit, 'C', 'C', 0, '');
+            $this->pdf->SetTextColor(0, 0, 0);
+        }
 
-    if ($this->pNotaDenegada()) {
+        if ($this->pNotaDenegada()) {
             //uso denegado
-        $this->pdf->SetTextColor(255, 0, 0);
-        $texto = "NFCe CANCELADA";
-        $this->pTextBox($x, $y - 25, $w, $h, $texto, $aFontTit, 'C', 'C', 0, '');
-        $this->pdf->SetTextColor(0, 0, 0);
+            $this->pdf->SetTextColor(255, 0, 0);
+            $texto = "NFCe CANCELADA";
+            $this->pTextBox($x, $y - 25, $w, $h, $texto, $aFontTit, 'C', 'C', 0, '');
+            $this->pdf->SetTextColor(0, 0, 0);
+        }
+
+        $cUF = $this->getTagValue($this->ide, 'cUF');
+        $nNF = $this->getTagValue($this->ide, 'nNF');
+        $serieNF = str_pad($this->getTagValue($this->ide, "serie"), 3, "0", STR_PAD_LEFT);
+        $dhEmi = $this->getTagValue($this->ide, "dhEmi");
+        $dhEmilocal = new \DateTime($dhEmi);
+        $dhEmiLocalFormat = $dhEmilocal->format('d/m/Y H:i:s');
+        $urlChave = $this->urlConsulta[$tpAmb][$this->UFSigla[$cUF]];
+        $texto = "ÁREA DE MENSAGEM FISCAL";
+        $this->pTextBox($x, $y, $w, $hLinha, $texto, $aFontTit, 'C', 'C', 0, '', false);
+        $yTex1 = $y + ($hLinha*1);
+        $hTex1 = $hLinha*2;
+        $texto = "Número " . $nNF . " Série " . $serieNF . " " .$dhEmiLocalFormat . " - Via Consumidor";
+        $this->pTextBox($x, $yTex1, $w, $hTex1, $texto, $aFontTex, 'C', 'C', 0, '', false);
+        $yTex2 = $y + ($hLinha*3);
+        $hTex2 = $hLinha*2;
+        $texto = "Consulte pela Chave de Acesso em " . $urlChave;
+        $this->pTextBox($x, $yTex2, $w, $hTex2, $texto, $aFontTex, 'C', 'C', 0, '', false);
+        $texto = "CHAVE DE ACESSO";
+        $yTit2 = $y + ($hLinha*5);
+        $this->pTextBox($x, $yTit2, $w, $hLinha, $texto, $aFontTit, 'C', 'C', 0, '', false);
+        $yTex3 = $y + ($hLinha*6);
+        $texto = $chNFe;
+        $this->pTextBox($x, $yTex3, $w, $hLinha, $texto, $aFontTex, 'C', 'C', 0, '', false);
     }
 
-    $cUF = $this->getTagValue($this->ide, 'cUF');
-    $nNF = $this->getTagValue($this->ide, 'nNF');
-    $serieNF = str_pad($this->getTagValue($this->ide, "serie"), 3, "0", STR_PAD_LEFT);
-    $dhEmi = $this->getTagValue($this->ide, "dhEmi");
-    $dhEmilocal = new \DateTime($dhEmi);
-    $dhEmiLocalFormat = $dhEmilocal->format('d/m/Y H:i:s');
-    $urlChave = $this->urlConsulta[$tpAmb][$this->UFSigla[$cUF]];
-    $texto = "ÁREA DE MENSAGEM FISCAL";
-    $this->pTextBox($x, $y, $w, $hLinha, $texto, $aFontTit, 'C', 'C', 0, '', false);
-    $yTex1 = $y + ($hLinha*1);
-    $hTex1 = $hLinha*2;
-    $texto = "Número " . $nNF . " Série " . $serieNF . " " .$dhEmiLocalFormat . " - Via Consumidor";
-    $this->pTextBox($x, $yTex1, $w, $hTex1, $texto, $aFontTex, 'C', 'C', 0, '', false);
-    $yTex2 = $y + ($hLinha*3);
-    $hTex2 = $hLinha*2;
-    $texto = "Consulte pela Chave de Acesso em " . $urlChave;
-    $this->pTextBox($x, $yTex2, $w, $hTex2, $texto, $aFontTex, 'C', 'C', 0, '', false);
-    $texto = "CHAVE DE ACESSO";
-    $yTit2 = $y + ($hLinha*5);
-    $this->pTextBox($x, $yTit2, $w, $hLinha, $texto, $aFontTit, 'C', 'C', 0, '', false);
-    $yTex3 = $y + ($hLinha*6);
-    $texto = $chNFe;
-    $this->pTextBox($x, $yTex3, $w, $hLinha, $texto, $aFontTex, 'C', 'C', 0, '', false);
-}
-
-protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
-{
-    $y += 6;
-    $margemInterna = $this->margemInterna;
-    $maxW = $this->wPrint;
-    $w = ($maxW*1);
-    $hLinha = $this->hLinha;
-    $aFontTit = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'B');
-    $aFontTex = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'');
-    $texto = "CONSUMIDOR";
-    $this->pTextBox($x, $y, $w, $hLinha, $texto, $aFontTit, 'C', 'C', 0, '', false);
-    if (isset($this->dest)) {
-        $considEstrangeiro = !empty($this->dest->getElementsByTagName("idEstrangeiro")->item(0)->nodeValue)
-        ? $this->dest->getElementsByTagName("idEstrangeiro")->item(0)->nodeValue
-        : '';
-        $consCPF = !empty($this->dest->getElementsByTagName("CPF")->item(0)->nodeValue)
-        ? $this->dest->getElementsByTagName("CPF")->item(0)->nodeValue
-        : '';
-        $consCNPJ = !empty($this->dest->getElementsByTagName("CNPJ")->item(0)->nodeValue)
-        ? $this->dest->getElementsByTagName("CNPJ")->item(0)->nodeValue
-        : '';
+    protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
+    {
+        $y += 6;
+        $margemInterna = $this->margemInterna;
+        $maxW = $this->wPrint;
+        $w = ($maxW*1);
+        $hLinha = $this->hLinha;
+        $aFontTit = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'B');
+        $aFontTex = array('font'=>$this->fontePadrao, 'size'=>8, 'style'=>'');
+        $texto = "CONSUMIDOR";
+        $this->pTextBox($x, $y, $w, $hLinha, $texto, $aFontTit, 'C', 'C', 0, '', false);
+        if (isset($this->dest)) {
+            $considEstrangeiro = !empty($this->dest->getElementsByTagName("idEstrangeiro")->item(0)->nodeValue)
+                ? $this->dest->getElementsByTagName("idEstrangeiro")->item(0)->nodeValue
+                : '';
+            $consCPF = !empty($this->dest->getElementsByTagName("CPF")->item(0)->nodeValue)
+                ? $this->dest->getElementsByTagName("CPF")->item(0)->nodeValue
+                : '';
+            $consCNPJ = !empty($this->dest->getElementsByTagName("CNPJ")->item(0)->nodeValue)
+                ? $this->dest->getElementsByTagName("CNPJ")->item(0)->nodeValue
+                : '';
             $cDest = $consCPF.$consCNPJ.$considEstrangeiro; //documentos do consumidor
             $enderDest = $this->dest->getElementsByTagName("enderDest")->item(0);
             $consNome = $this->getTagValue($this->dest, "xNome");
@@ -1000,18 +949,18 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
             $consEnd = "";
             if (!empty($consLgr)) {
                 $consEnd = $consLgr
-                . ","
-                . $consNro
-                . " "
-                . $consCpl
-                . ","
-                . $consBairro
-                . ". CEP:"
-                . $consCEP
-                . ". "
-                . $consMun
-                . "-"
-                . $consUF;
+                    . ","
+                    . $consNro
+                    . " "
+                    . $consCpl
+                    . ","
+                    . $consBairro
+                    . ". CEP:"
+                    . $consCEP
+                    . ". "
+                    . $consMun
+                    . "-"
+                    . $consUF;
             }
             $yTex1 = $y + $hLinha;
             $texto = $consNome;
@@ -1025,7 +974,7 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
             $this->pTextBox($x, $yTex1, $w, $hLinha, $texto, $aFontTex, 'C', 'C', 0, '', false);
         }
     }
-    
+
     protected function pQRDANFE($x = 0, $y = 0, $h = 0)
     {
         $y += 6;
@@ -1082,7 +1031,7 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         // seta o textbox do texto adicional
         $this->pTextBox($x, $y+3, $w-2, $hLinha-3, $this->textoAdic, $aFontTex, 'T', 'L', 0, '', false);
     }
-    
+
     /**
      * printDANFE
      * Esta função envia a DANFE em PDF criada para o dispositivo informado.
@@ -1116,7 +1065,7 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
     {
         return $this->pdf->getPdf();
     }
-    
+
     /**
      * anfavea
      * Função para transformar o campo cdata do padrão ANFAVEA para
@@ -1232,13 +1181,13 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         $t = $dom->getElementsByTagName('transmissor')->item(0);
         $r = $dom->getElementsByTagName('receptor')->item(0);
         $versao = ! empty($dom->getElementsByTagName('versao')->item(0)->nodeValue) ?
-        'Versao:'.$dom->getElementsByTagName('versao')->item(0)->nodeValue.' ' : '';
+            'Versao:'.$dom->getElementsByTagName('versao')->item(0)->nodeValue.' ' : '';
         $especieNF = ! empty($dom->getElementsByTagName('especieNF')->item(0)->nodeValue) ?
-        'Especie:'.$dom->getElementsByTagName('especieNF')->item(0)->nodeValue.' ' : '';
+            'Especie:'.$dom->getElementsByTagName('especieNF')->item(0)->nodeValue.' ' : '';
         $fabEntrega = ! empty($dom->getElementsByTagName('fabEntrega')->item(0)->nodeValue) ?
-        'Entrega:'.$dom->getElementsByTagName('fabEntrega')->item(0)->nodeValue.' ' : '';
+            'Entrega:'.$dom->getElementsByTagName('fabEntrega')->item(0)->nodeValue.' ' : '';
         $dca = ! empty($dom->getElementsByTagName('dca')->item(0)->nodeValue) ?
-        'dca:'.$dom->getElementsByTagName('dca')->item(0)->nodeValue.' ' : '';
+            'dca:'.$dom->getElementsByTagName('dca')->item(0)->nodeValue.' ' : '';
         $texto .= "".$versao.$especieNF.$fabEntrega.$dca;
         if (isset($t)) {
             if ($t->hasAttributes()) {
@@ -1262,7 +1211,7 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         }
         return $texto;
     }
-    
+
     /**
      * str2Hex
      * Converte string para haxadecimal ASCII
@@ -1284,31 +1233,31 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         } while ($iCount < strlen($str));
         return $hex;
     }//fim str2Hex
-    
+
     protected static function getCardName($tBand)
     {
         switch ($tBand) {
             case '01':
-            $tBandNome = 'VISA';
-            break;
+                $tBandNome = 'VISA';
+                break;
             case '02':
-            $tBandNome = 'MASTERCARD';
-            break;
+                $tBandNome = 'MASTERCARD';
+                break;
             case '03':
-            $tBandNome = 'AMERICAM EXPRESS';
-            break;
+                $tBandNome = 'AMERICAM EXPRESS';
+                break;
             case '04':
-            $tBandNome = 'SOROCRED';
-            break;
+                $tBandNome = 'SOROCRED';
+                break;
             case '99':
-            $tBandNome = 'OUTROS';
-            break;
+                $tBandNome = 'OUTROS';
+                break;
             default:
-            $tBandNome = '';
+                $tBandNome = '';
         }
         return $tBandNome;
     }
-    
+
     /**
      * hex2Str
      * Converte hexadecimal ASCII para string
@@ -1325,13 +1274,13 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         $iCount = 0;
         do {
             // if(phpversion() < 8){
-                // $bin .= chr(hexdec($str{$iCount}.$str{($iCount + 1)}));
+            // $bin .= chr(hexdec($str{$iCount}.$str{($iCount + 1)}));
             // }
             $iCount += 2;
         } while ($iCount < strlen($str));
         return $bin;
     }
-    
+
     protected function makeQRCode(
         $chNFe,
         $url,
@@ -1369,7 +1318,7 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         }
         return $seq;
     }
-    
+
     protected function pNotaCancelada()
     {
         if (!isset($this->nfeProc)) {
@@ -1377,9 +1326,9 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         }
         $cStat = $this->getTagValue($this->nfeProc, "cStat");
         return $cStat == '101' ||
-        $cStat == '151' ||
-        $cStat == '135' ||
-        $cStat == '155';
+            $cStat == '151' ||
+            $cStat == '135' ||
+            $cStat == '155';
     }
 
     protected function pNotaDenegada()
@@ -1391,7 +1340,7 @@ protected function pConsumidorDANFE($x = 0, $y = 0, $h = 0)
         //1 VEZ NO ARQUIVO INTEIRO
         $cStat = $this->getTagValue($this->nfeProc, "cStat");
         return $cStat == '110' ||
-        $cStat == '301' ||
-        $cStat == '302';
+            $cStat == '301' ||
+            $cStat == '302';
     }
 }
